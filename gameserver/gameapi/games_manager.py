@@ -1,7 +1,8 @@
 import logging
+from typing import Dict
 from uuid import uuid4, UUID
 
-from gameapi.models import Game
+from gameapi.models import Game, Token
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class GameManager(object):
     _instance = None
 
     def __init__(self):
-        self.games: dict[UUID, Game] = {}
+        self.games: Dict[UUID, Game] = {}
 
     @classmethod
     def get_instance(cls):
@@ -28,7 +29,7 @@ class GameManager(object):
         self.games[game_id] = game
         return game_id
 
-    def get_game(self, game_id: str) -> Game:
+    def get_game(self, game_id: UUID) -> Game:
         """
         Get game from game manager
 
@@ -48,5 +49,8 @@ class GameManager(object):
 
 game_manager = GameManager.get_instance()
 
-test_game_id = game_manager.add_game(Game())
+game_ = Game()
+players = {uuid4(), uuid4()}
+logger.info('Here are game players: %s', game_.players)
+test_game_id = game_manager.add_game(game_)
 logger.info('Test game id %s', test_game_id)
