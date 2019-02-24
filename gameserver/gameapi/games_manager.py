@@ -51,6 +51,8 @@ game_manager = GameManager.get_instance()
 
 game_ = Game()
 players = {uuid4(), uuid4()}
-logger.info('Here are game players: %s', game_.players)
+game_.start(players)
 test_game_id = game_manager.add_game(game_)
+logger.info('Here are game players: %s', game_.players)
 logger.info('Test game id %s', test_game_id)
+logger.info('Game state: %s', game_)

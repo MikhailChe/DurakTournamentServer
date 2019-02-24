@@ -1,3 +1,4 @@
+import logging
 import ujson
 from uuid import UUID
 
@@ -5,7 +6,9 @@ from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, HttpR
 
 # Create your views here.
 from gameapi.games_manager import DoesNotExist, game_manager
-from gameapi.models import Game, Token
+from gameapi.models import Game, Token, Card
+
+logger = logging.getLogger(__name__)
 
 
 def game_auth(fn):
@@ -25,30 +28,9 @@ def game_auth(fn):
 
         if not check_token_in_game(game, token):
             return HttpResponseBadRequest('Token is not part of this game')
-        return fn(request, game=game, token=token, *args, **kwargs)
+        return fn(request, *args, game=game, token=token, **kwargs)
 
     return game_auth_wrapper
-
-
-def generate_state(game: Game, token: Token):
-    reference_dict = {
-        "action_accepted": False,
-        "actions_available": ["put", "endturn", "take"],
-        "game_field": {
-            "cards": ["6C", "7H"],
-            "field_cards": game.field.table,
-            "deck_counter": len(game.field.deck),
-            "trump": game.field.trump,
-            "enemy_cards_counter": 6
-        },
-        "game_state": {
-            "status": game.is_over(),
-            "number_of_turns": game.number_of_turns,
-            "number_of_moves": game.number_of_moves,
-            "result": game.get_result(token)
-        }
-    }
-    return ujson.dumps(reference_dict)
 
 
 def check_game_id(game_id: UUID):
@@ -64,21 +46,40 @@ def check_token_in_game(game: Game, token: Token):
 
 
 @game_auth
-def get_state(request: HttpRequest, game: Game, token: Token = None):
+def get_state(request: HttpRequest, game: Game, token: Token):
     return HttpResponse(
-        content=generate_state(game, token),
+        content=ujson.dumps(game.get_state(token)),
     )
 
 
 @game_auth
-def take_action(request: HttpRequest, game: Game, token: Token = None):
+def take_action(request: HttpRequest, game: Game, token: Token):
     action_str = request.GET['action']
     card_str = request.GET['card']
-    try:
-        game.take_action(token, action_str, card_str)
-    except Game.ActionNotAllowed:
-        return HttpResponseBadRequest('Action not allowed')
-    except Game.ActionInvalid as e:
-        return HttpResponseBadRequest('Action invalid %s', e)
 
-    return HttpResponse(conten=generate_state(game, token))
+    uuid = UUID(token.token)
+    action = Game.Action(action_str)
+    card = Card.from_string(card_str)
+    action_accepted = True
+    try:
+        game.take_action(uuid, action, card)
+    except Game.ActionNotAllowed:
+        logger.warning(
+            'Action not allowed  %s %s %s',
+            action, token, game,
+            exc_info=True,
+        )
+        action_accepted = False
+    except Game.ActionInvalid:
+        logger.warning(
+            'Action invalid %s %s %s',
+            action, token, game,
+            exc_info=True,
+        )
+
+    new_state = game.get_state(uuid)
+    new_state.update({
+        'action_accepted': action_accepted,
+    })
+
+    return HttpResponse(conten=ujson.dumps(new_state))

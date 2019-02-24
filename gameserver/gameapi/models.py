@@ -1,4 +1,5 @@
 # Create your models here.
+import datetime
 import logging
 import random
 import uuid
@@ -218,6 +219,7 @@ class Game(object):
         self.defending_player: uuid.UUID = None
         self.winners: Set[uuid.UUID] = None
         self.seed: int = None
+        self.started_at = None
 
     def __repr__(self):
         return self.__class__.__qualname__ + '[' + ', '.join(
@@ -418,6 +420,7 @@ class Game(object):
         self.players = list(players)
         self.active_player = self.select_starting_player(set(players), last_winners)
         self.defending_player = self.select_defending_player(self.active_player)
+        self.started_at = datetime.datetime.utcnow()
         return self
 
     def select_starting_player(self, players: Set[uuid.UUID], last_winners: Set[uuid.UUID]):
