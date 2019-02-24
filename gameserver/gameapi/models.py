@@ -31,6 +31,63 @@ class TokenAccessLog(models.Model):
     access_time = models.DateTimeField()
 
 
+class Card(object):
+    class Suit(Enum):
+        SPADES = 'S'
+        CLUBS = 'C'
+        DIAMONDS = 'D'
+        HEARTS = 'H'
+
+    def __init__(self, value: int, suit: Suit):
+        if value < 6 or value > 14:
+            raise ValueError('Card value incorrect %s', value)
+        self.value: int = value
+        self.suit: Card.Suit = suit
+
+    @classmethod
+    def from_string(cls, card_str):
+        if card_str is None:
+            raise ValueError('Card string is None')
+        if len(card_str) < 2:
+            raise ValueError('Incorrect card format: too short')
+        card_value_str = card_str[:-1]
+        card_suit_str = card_str[-1]
+        return cls(int(card_value_str), Card.Suit(card_suit_str))
+
+    def card_value_str(self):
+        human_names = {
+            11: 'Jack',
+            12: 'Queen',
+            13: 'King',
+            14: 'Ace',
+        }
+        if self.value in human_names:
+            return human_names[self.value]
+        else:
+            return str(self.value)
+
+    def __str__(self):
+        return self.card_value_str()[0] + self.suit.name[0]
+
+    def __repr__(self):
+        return (
+            self.__class__.__qualname__ + '[' +
+            ', '.join(map(repr, self.__dict__.items())) +
+            ']'
+        )
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return other.value == self.value and other.suit == self.suit
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.value, self.suit))
+
+
 class GameField(object):
     def __init__(self):
         self.player_cards: Dict[uuid.UUID, Set[Card]] = {}
@@ -54,7 +111,7 @@ class GameField(object):
         if seed is None:
             seed = random.getrandbits(128)
         self.seed = seed
-        logger.info('Seeding game with %d', seed)
+        logger.info('Seeding game field with %d', seed)
         random.seed(seed)
 
         all_cards: List[Card] = [Card(value, suit) for value in range(6, 15, 1) for suit in Card.Suit]
@@ -135,63 +192,6 @@ class GameField(object):
             except ValueError:
                 pass
         return minimal_trump_player
-
-
-class Card(object):
-    class Suit(Enum):
-        SPADES = 'S'
-        CLUBS = 'C'
-        DIAMONDS = 'D'
-        HEARTS = 'H'
-
-    def __init__(self, value: int, suit: Suit):
-        if value < 6 or value > 14:
-            raise ValueError('Card value incorrect %s', value)
-        self.value: int = value
-        self.suit: Card.Suit = suit
-
-    @classmethod
-    def from_string(cls, card_str):
-        if card_str is None:
-            raise ValueError('Card string is None')
-        if len(card_str) < 2:
-            raise ValueError('Incorrect card format: too short')
-        card_value_str = card_str[:-1]
-        card_suit_str = card_str[-1]
-        return cls(int(card_value_str), Card.Suit(card_suit_str))
-
-    def card_value_str(self):
-        human_names = {
-            11: 'Jack',
-            12: 'Queen',
-            13: 'King',
-            14: 'Ace',
-        }
-        if self.value in human_names:
-            return human_names[self.value]
-        else:
-            return str(self.value)
-
-    def __str__(self):
-        return self.card_value_str()[0] + self.suit.name[0]
-
-    def __repr__(self):
-        return (
-            self.__class__.__qualname__ + '[' +
-            ', '.join(map(repr, self.__dict__.items())) +
-            ']'
-        )
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return other.value == self.value and other.suit == self.suit
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        return hash((self.value, self.suit))
 
 
 class Game(object):
@@ -416,7 +416,7 @@ class Game(object):
             last_winners = set()
         self.field.randomize_game(set(players), seed=seed)
         self.players = list(players)
-        self.active_player = self.select_starting_player(players, last_winners)
+        self.active_player = self.select_starting_player(set(players), last_winners)
         self.defending_player = self.select_defending_player(self.active_player)
         return self
 
