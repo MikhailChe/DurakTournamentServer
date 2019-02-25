@@ -55,6 +55,9 @@ class Card(object):
         card_suit_str = card_str[-1]
         return cls(int(card_value_str), Card.Suit(card_suit_str))
 
+    def to_card_string(self):
+        return str(self.value) + str(self.suit.value)
+
     def card_value_str(self):
         human_names = {
             11: 'Jack',
@@ -112,7 +115,7 @@ class GameField(object):
         if seed is None:
             seed = random.getrandbits(128)
         self.seed = seed
-        logger.info('Seeding game field with %d', seed)
+        logger.debug('Seeding game field with %d', seed)
         random.seed(seed)
 
         all_cards: List[Card] = [Card(value, suit) for value in range(6, 15, 1) for suit in Card.Suit]
@@ -129,12 +132,17 @@ class GameField(object):
         self.trump = self.deck[0]
         return self
 
+    def flat_table(self):
+        for pair in self.table:
+            for card in pair:
+                yield card
+
     def get_state(self, token):
         return {
-            'cards': self.player_cards[token],
-            'field_cards': self.table,
+            'cards': list(map(Card.to_card_string, self.player_cards[token])),
+            'field_cards': map(Card.to_card_string, self.flat_table()),
             'deck_counter': len(self.deck),
-            'trump': self.trump,
+            'trump': self.trump.to_card_string(),
             'enemy_cards_counter': sum(
                 map(
                     len,
@@ -230,9 +238,12 @@ class Game(object):
         attacking_actions = [Game.Action.PUT, Game.Action.ENDTURN]
         defending_actions = [Game.Action.PUT, Game.Action.TAKE]
         if not token == self.active_player:
+            logging.warning('Token %s is not active player (%s)', token, self.active_player)
             return False
         if self.is_attacking(token):
+            logging.info('Player is attacking')
             return action in attacking_actions
+        logging.info('Player is defending')
         return action in defending_actions
 
     def is_action_valid(self, token: uuid.UUID, action: Action, card: Card):
@@ -240,7 +251,11 @@ class Game(object):
         Assumes that **`action`** is allowed
         """
         if action == Game.Action.PUT:
+            if card is None:
+                logger.warning('No card to put')
+                return False
             if card not in self.field.player_cards[token]:
+                logger.warning('Card %s not in player\'s hands', card, )
                 return False
             return self.can_put_card(token, card)
         elif action == Game.Action.ENDTURN:
@@ -251,14 +266,18 @@ class Game(object):
 
     def can_put_card(self, token: uuid.UUID, card: Card):
         if self.is_attacking(token):
-            return self.can_attack_with(card)
+            can_attack = self.can_attack_with(card)
+            logger.info('Can attack with %s %s', card, can_attack)
+            return can_attack
         else:
+            can_defend = self.can_attack_with(card)
+            logger.info('Can attack with %s %s', card, can_defend)
             return self.can_defend_with(card)
 
-    def is_defending(self, token):
+    def is_defending(self, token: uuid.UUID):
         return self.defending_player == token
 
-    def is_attacking(self, token):
+    def is_attacking(self, token: uuid.UUID):
         return not self.is_defending(token)
 
     def can_attack_with(self, card: Card):
@@ -289,18 +308,25 @@ class Game(object):
         return self.is_defending(token)
 
     def take_action(self, token: uuid.UUID, action: Action, card: Card):
-        # TODO: not implemented
+        logger.debug('Game.take_action')
         if not self.is_action_allowed(token, action):
+            logger.info('Action is not allowed')
             raise Game.ActionNotAllowed('Action not allowed %s %s' % (token, action))
         if not self.is_action_valid(token, action, card):
-            raise Game.ActionInvalid('Action invalid %s %s %s' % token, action, card)
+            logger.info('Action is not valid')
+            raise Game.ActionInvalid('Action invalid %s %s %s' % (token, action, card))
         if action == Game.Action.PUT:
+            logger.debug('Performing PUT action')
             self.put_card_on_table(token, card)
+            self.switch_actor()
         elif action == Game.Action.TAKE:
+            logger.debug('Performing TAKE action')
             self.take_table_cards(token)
             self.equalize_players_cards()
+            self.switch_actor()
             # TODO: modify switch_turns for 3+ users game
         elif action == Game.Action.ENDTURN:
+            logger.debug('Performing ENDTURN action')
             self.throw_cards()
             self.equalize_players_cards()
             self.switch_turns()
@@ -315,7 +341,7 @@ class Game(object):
         self.field.player_cards[token].remove(card)
         active_card_pair.append(card)
 
-    def take_table_cards(self, token):
+    def take_table_cards(self, token: uuid.UUID):
         for pair in self.field.table:
             for card in pair:
                 self.field.player_cards[token].add(card)
@@ -342,6 +368,14 @@ class Game(object):
             if len(self.field.deck) == 0:
                 break
             defending_player.add(self.field.deck.pop())
+
+    def switch_actor(self):
+        logger.debug('switch_actor')
+        logger.info('Currently active player: %s', self.active_player)
+        index = self.players.index(self.active_player)
+        new_index = (index + 1) % len(self.players)
+        self.active_player = self.players[new_index]
+        logger.info('Newly active player: %s', self.active_player)
 
     def switch_turns(self):
         index = self.players.index(self.defending_player)
@@ -375,7 +409,7 @@ class Game(object):
         # TODO: not implemented
         return self.active_player is None
 
-    def get_result(self, token):
+    def get_result(self, token: uuid.UUID):
         """
         return None if game is not finished
         return winer , looser or draw for token if game is over
@@ -388,7 +422,7 @@ class Game(object):
             return 'draw'
         return 'winner' if token in self.winners else 'looser'
 
-    def get_state(self, token):
+    def get_state(self, token: uuid.UUID):
         return {
             'game_field': self.field.get_state(token),
             'actions_available': list(map(
@@ -401,7 +435,7 @@ class Game(object):
             ),
             # ['put', 'endturn', 'take'],
             'game_state': {
-                'status': self.is_over(),
+                'status': 'gameover' if self.is_over() else 'play',
                 'number_of_turns': self.number_of_turns,
                 'number_of_moves': self.number_of_moves,
                 'result': self.get_result(token)
@@ -412,7 +446,7 @@ class Game(object):
         if seed is None:
             seed = random.getrandbits(128)
         random.seed(seed)
-        logger.info('Seeding whole game with %s', seed)
+        logger.debug('Seeding whole game with %s', seed)
         self.seed = seed
         if last_winners is None:
             last_winners = set()

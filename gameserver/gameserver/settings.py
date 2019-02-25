@@ -122,20 +122,22 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        'simple': {
+            'format': '%(asctime)s\t[%(levelname)s]\t%(message)s',
         }
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'level': 'INFO',
+            'level': 'DEBUG',
+            'stream': sys.stdout,
+            'formatter': 'simple',
         },
     },
     'loggers': {
-        'gameapi': {
+        '': {
             'handlers': ['console'],
-            'level': 'INFO',
+            'level': 'DEBUG',
         }
     }
 }

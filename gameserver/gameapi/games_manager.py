@@ -1,4 +1,5 @@
 import logging
+from operator import itemgetter
 from typing import Dict
 from uuid import uuid4, UUID
 
@@ -25,7 +26,7 @@ class GameManager(object):
         return cls._instance
 
     def add_game(self, game: Game):
-        game_id = uuid4()
+        game_id = UUID('1111-1111-1111-1111-1111-1111-1111-1111')
         self.games[game_id] = game
         return game_id
 
@@ -50,9 +51,10 @@ class GameManager(object):
 game_manager = GameManager.get_instance()
 
 game_ = Game()
-players = {uuid4(), uuid4()}
+tokens = list(map(itemgetter('token'), Token.objects.filter(valid=True).values('token')[:2]))
+players = set(tokens)
 game_.start(players)
 test_game_id = game_manager.add_game(game_)
 logger.info('Here are game players: %s', game_.players)
 logger.info('Test game id %s', test_game_id)
-logger.info('Game state: %s', game_)
+logger.info('Game state: %s', str(game_.field))

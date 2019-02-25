@@ -16,7 +16,7 @@ def game_auth(fn):
         try:
             game = check_game_id(game_id)
         except DoesNotExist:
-            return HttpResponseNotFound('Game does not exist %s' % (game_id,))
+            return HttpResponseNotFound('Game does not exist')
         try:
             token_str = request.GET['token']
         except KeyError:
@@ -26,8 +26,9 @@ def game_auth(fn):
         except Token.DoesNotExist:
             return HttpResponseBadRequest('Token invalid')
 
-        if not check_token_in_game(game, token):
-            return HttpResponseBadRequest('Token is not part of this game')
+        if not check_token_in_game(game, token.token):
+            logger.warning('Token is not part of this game. (%s not in %s)', token, game.players)
+            return HttpResponseBadRequest('Token is not part of this game.')
         return fn(request, *args, game=game, token=token, **kwargs)
 
     return game_auth_wrapper
@@ -47,39 +48,44 @@ def check_token_in_game(game: Game, token: Token):
 
 @game_auth
 def get_state(request: HttpRequest, game: Game, token: Token):
+    logger.debug('/get_state handler')
+    state = game.get_state(token.token)
+    logger.debug(state)
     return HttpResponse(
-        content=ujson.dumps(game.get_state(token)),
+        content=ujson.dumps(state),
     )
 
 
 @game_auth
 def take_action(request: HttpRequest, game: Game, token: Token):
+    logger.debug('/take_action handler')
+    if 'action' not in request.GET:
+        return HttpResponseBadRequest('No action provided')
     action_str = request.GET['action']
-    card_str = request.GET['card']
+    card_str = request.GET.get(key='card', default=None)
 
-    uuid = UUID(token.token)
+    uuid = token.token
     action = Game.Action(action_str)
-    card = Card.from_string(card_str)
+    card = Card.from_string(card_str) if card_str else None
     action_accepted = True
     try:
         game.take_action(uuid, action, card)
     except Game.ActionNotAllowed:
         logger.warning(
-            'Action not allowed  %s %s %s',
-            action, token, game,
-            exc_info=True,
+            'Action not allowed  %s %s',
+            action, token,
         )
         action_accepted = False
     except Game.ActionInvalid:
         logger.warning(
-            'Action invalid %s %s %s',
-            action, token, game,
-            exc_info=True,
+            'Action invalid %s %s',
+            action, token,
         )
+        action_accepted = False
 
     new_state = game.get_state(uuid)
     new_state.update({
         'action_accepted': action_accepted,
     })
-
-    return HttpResponse(conten=ujson.dumps(new_state))
+    logger.debug(new_state)
+    return HttpResponse(content=ujson.dumps(new_state))
