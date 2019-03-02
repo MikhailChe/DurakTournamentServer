@@ -9,5 +9,6 @@ RUN /srv/DurakTournamentServer/env/bin/pip install --upgrade -r requirements.txt
 WORKDIR /srv/DurakTournamentServer/gameserver
 RUN /srv/DurakTournamentServer/env/bin/python manage.py migrate
 
-ENTRYPOINT /srv/DurakTournamentServer/env/bin/python manage.py runserver 0:80
+ENTRYPOINT ["/bin/bash"]
+CMD ["/srv/DurakTournamentServer/env/bin/python", "manage.py", "runaserver", "0:80"]
 EXPOSE 80
