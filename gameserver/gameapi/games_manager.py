@@ -1,6 +1,6 @@
 import logging
 from operator import itemgetter
-from typing import Dict
+from typing import Dict, List
 from uuid import uuid4, UUID
 
 from gameapi.models import Game, Token
@@ -46,6 +46,12 @@ class GameManager(object):
                 self.games.keys()
             )
             raise DoesNotExist('Game with id "%s" doesnt exist' % game_id)
+
+    def list_games(self, user_id: UUID) -> List[UUID]:
+        """
+        List games that user_id is in
+        """
+        return [game_id for game_id, game in self.games.items() if user_id in game.players]
 
 
 game_manager = GameManager.get_instance()
