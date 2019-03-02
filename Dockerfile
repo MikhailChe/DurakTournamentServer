@@ -5,11 +5,9 @@ RUN mkdir -p /srv && cd /srv && git clone https://github.com/MikhailChe/DurakTou
 WORKDIR /srv/DurakTournamentServer
 RUN pip install --upgrade virtualenv
 RUN virtualenv -p python3.7 --clear env
-RUN apt-get install -y
 RUN /srv/DurakTournamentServer/env/bin/pip install --upgrade -r requirements.txt
 WORKDIR /srv/DurakTournamentServer/gameserver
 RUN /srv/DurakTournamentServer/env/bin/python manage.py migrate
-RUN /srv/DurakTournamentServer/env/bin/python manage.py createsuperuser
 
 ENTRYPOINT /srv/DurakTournamentServer/env/bin/python manage.py runserver 0:80
 EXPOSE 80
