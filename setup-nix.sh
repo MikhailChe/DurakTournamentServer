@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-virtualenv env
+virtualenv -p python3.7 env
 source env/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
