@@ -461,7 +461,10 @@ class Game(object):
         choose_from = players & last_winners
         if choose_from:
             return random.sample(choose_from, 1)[0]
-        return self.field.get_player_with_least_trump_suit()
+        starter = self.field.get_player_with_least_trump_suit()
+        if starter is None:
+            starter = random.sample(players, 1)[0]
+        return starter
 
     def select_defending_player(self, active_player):
         active_index = self.players.index(active_player)

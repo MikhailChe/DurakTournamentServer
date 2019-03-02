@@ -50,11 +50,14 @@ class GameManager(object):
 
 game_manager = GameManager.get_instance()
 
-game_ = Game()
-tokens = list(map(itemgetter('token'), Token.objects.filter(valid=True).values('token')[:2]))
-players = set(tokens)
-game_.start(players)
-test_game_id = game_manager.add_game(game_)
-logger.info('Here are game players: %s', game_.players)
-logger.info('Test game id %s', test_game_id)
-logger.info('Game state: %s', str(game_.field))
+try:
+    game_ = Game()
+    tokens = list(map(itemgetter('token'), Token.objects.filter(valid=True).values('token')[:2]))
+    players = set(tokens)
+    game_.start(players)
+    test_game_id = game_manager.add_game(game_)
+    logger.info('Here are game players: %s', game_.players)
+    logger.info('Test game id %s', test_game_id)
+    logger.info('Game state: %s', str(game_.field))
+except Exception:
+    pass
