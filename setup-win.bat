@@ -1,16 +1,6 @@
-setlocal enabledelayedexpansion
-if %errorlevel% neq 0 exit /b %errorlevel%
-python3 -m venv --clear env
-if %errorlevel% neq 0 exit /b %errorlevel%
-./env/Scripts/activate.bat
-if %errorlevel% neq 0 exit /b %errorlevel%
-pip install --upgrade pip
-if %errorlevel% neq 0 exit /b %errorlevel%
-pip install -r requirements.txt
-if %errorlevel% neq 0 exit /b %errorlevel%
+py -3 -m venv --clear env
+env\Scripts\pip.exe install -r requirements.txt
 pushd gameserver
-if %errorlevel% neq 0 exit /b %errorlevel%
-python manage.py migrate
-if %errorlevel% neq 0 exit /b %errorlevel%
+..\env\Scripts\python.exe manage.py migrate
+..\env\Scripts\python.exe manage.py createsuperuser
 popd
-if %errorlevel% neq 0 exit /b %errorlevel%
