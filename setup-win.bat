@@ -1,7 +1,6 @@
-virtualenv -p python3.7 --clear env
-./env/Scripts/activate.bat
-pip install --upgrade pip
-pip install -r requirements.txt
+py -3 -m venv --clear env
+env\Scripts\pip.exe install -r requirements.txt
 pushd gameserver
-python manage.py migrate
+..\env\Scripts\python.exe manage.py migrate
+..\env\Scripts\python.exe manage.py createsuperuser
 popd
