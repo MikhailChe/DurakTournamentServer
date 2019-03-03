@@ -78,7 +78,7 @@ WSGI_APPLICATION = 'gameserver.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': os.getenv('DATABASE_SQLITE_PATH', os.path.join(BASE_DIR, 'db.sqlite3')),
     }
 }
 
@@ -133,6 +133,10 @@ LOGGING = {
             'stream': sys.stdout,
             'formatter': 'simple',
         },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': '../root.log',
+        }
     },
     'loggers': {
         '': {
