@@ -4,9 +4,9 @@ RUN apt-get update && apt-get install -y python3.7 python3-pip libpython3.7-dev 
 COPY . /app
 WORKDIR /app/gameserver
 RUN virtualenv -p python3.7 --clear /app/env
+ENV DATABASE_SQLITE_PATH=/db/db.sqlite3
 RUN /app/env/bin/pip install --upgrade -r ../requirements.txt && /app/env/bin/python manage.py migrate
 VOLUME /db
 
-ENV DATABASE_SQLITE_PATH=/db/db.sqlite3
 CMD ["/app/env/bin/python", "manage.py", "runserver", "0.0.0.0:80"]
 EXPOSE 80
