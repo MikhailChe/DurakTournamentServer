@@ -1,9 +1,10 @@
 import logging
 from operator import itemgetter
-from typing import Dict, List, Iterable
-from uuid import uuid4, UUID
+from typing import Dict, Iterable
+from uuid import UUID, uuid4
 
-from gameapi.models import Game, Token
+from gameapi.game.models import Game
+from gameapi.models import Token
 
 logger = logging.getLogger(__name__)
 
@@ -58,17 +59,3 @@ class GameManager(object):
 
 
 game_manager = GameManager.get_instance()
-
-try:
-    for i in range(3):
-        game_ = Game()
-        tokens = list(map(itemgetter('token'), Token.objects.filter(valid=True).values('token')[:2]))
-        players = set(tokens)
-        game_.start(players)
-        test_game_id = game_manager.add_game(game_)
-        logger.info('Here are game players: %s', game_.players)
-        logger.info('Test game id %s', test_game_id)
-        logger.info('Game state: %s', str(game_.field))
-
-except Exception:
-    logger.exception("OOPS")
