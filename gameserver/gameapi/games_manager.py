@@ -1,6 +1,6 @@
 import logging
 from operator import itemgetter
-from typing import Dict, List
+from typing import Dict, List, Iterable
 from uuid import uuid4, UUID
 
 from gameapi.models import Game, Token
@@ -26,7 +26,10 @@ class GameManager(object):
         return cls._instance
 
     def add_game(self, game: Game):
-        game_id = UUID('1111-1111-1111-1111-1111-1111-1111-1111')
+        if not self.games:
+            game_id = UUID('1111-1111-1111-1111-1111-1111-1111-1111')
+        else:
+            game_id = uuid4()
         self.games[game_id] = game
         return game_id
 
@@ -47,23 +50,25 @@ class GameManager(object):
             )
             raise DoesNotExist('Game with id "%s" doesnt exist' % game_id)
 
-    def list_games(self, user_id: UUID) -> List[UUID]:
+    def list_games(self, user_id: UUID) -> Iterable[UUID]:
         """
         List games that user_id is in
         """
-        return [game_id for game_id, game in self.games.items() if user_id in game.players]
+        return (game_id for game_id, game in self.games.items() if user_id in game.players)
 
 
 game_manager = GameManager.get_instance()
 
 try:
-    game_ = Game()
-    tokens = list(map(itemgetter('token'), Token.objects.filter(valid=True).values('token')[:2]))
-    players = set(tokens)
-    game_.start(players)
-    test_game_id = game_manager.add_game(game_)
-    logger.info('Here are game players: %s', game_.players)
-    logger.info('Test game id %s', test_game_id)
-    logger.info('Game state: %s', str(game_.field))
+    for i in range(3):
+        game_ = Game()
+        tokens = list(map(itemgetter('token'), Token.objects.filter(valid=True).values('token')[:2]))
+        players = set(tokens)
+        game_.start(players)
+        test_game_id = game_manager.add_game(game_)
+        logger.info('Here are game players: %s', game_.players)
+        logger.info('Test game id %s', test_game_id)
+        logger.info('Game state: %s', str(game_.field))
+
 except Exception:
-    pass
+    logger.exception("OOPS")

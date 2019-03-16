@@ -21,5 +21,5 @@ import gameserver.views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', gameserver.views.main),
-    path('game/play/', include('gameapi.urls'))
+    path('game/', include('gameapi.urls'))
 ]
